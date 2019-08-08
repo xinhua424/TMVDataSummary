@@ -1,0 +1,10 @@
+AtGage; 
+  Response 'Test_Value'; 
+  Samples 'Samples'; 
+  Appraisers 'Appraiser'; 
+  Attribute 'True_Value';
+  Ordinal;
+  GAppraiser;
+  GAttribute;
+  OneDoc;
+  Brief 2.
