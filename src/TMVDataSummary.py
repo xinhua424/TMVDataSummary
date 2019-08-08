@@ -13,8 +13,13 @@
 #Check if the good sample quantity is same as the bad sample.
 
 #2019-08-08
-Version=1.4;
+# Version=1.4;
 #Only check the bad unit fails, and good unit passes.
+
+#2019-08-08
+Version=1.5;
+#Sort the overall test result by test time.
+#Only read the map file for the specified station.
 
 import os;
 import sys;
@@ -142,50 +147,52 @@ def ParseICTFile(fileFullPath):
     return keys;
 
 #Read the device map information
-ICTMapFile="ICTMap.csv";
-ICTPanelMap=dict();
-with open(ICTMapFile, 'r') as f:
-    reader = csv.reader(f,delimiter=",");
-    for sn,panel,trueValue in reader:
-        ICTPanelMap[sn]=[panel,trueValue];
+if stationCategory=="1":
+    ICTMapFile="ICTMap.csv";
+    ICTPanelMap=dict();
+    with open(ICTMapFile, 'r') as f:
+        reader = csv.reader(f,delimiter=",");
+        for sn,panel,trueValue in reader:
+            ICTPanelMap[sn]=[panel,trueValue];
 
-FCTMapFile="FCTMap.csv";
-FCTPanelMap=dict();        
-with open(FCTMapFile, 'r') as f:
-    reader = csv.reader(f,delimiter=",");
-    for sn,panel,trueValue,ExpectedEC in reader:
-        FCTPanelMap[sn]=[panel,trueValue,ExpectedEC];
+if stationCategory=="2":
+    ChargerMapFile="ChargerMap.csv";
+    ChargerMap=dict();
+    with open(ChargerMapFile, 'r') as f:
+        reader = csv.reader(f,delimiter=",");
+        for sn,trueValue in reader:
+            ChargerMap[sn]=trueValue;
 
-ChargerMapFile="ChargerMap.csv";
-ChargerMap=dict();
-with open(ChargerMapFile, 'r') as f:
-    reader = csv.reader(f,delimiter=",");
-    for sn,trueValue in reader:
-        ChargerMap[sn]=trueValue;
-
-SFGMapFile="SFGMap.csv";
-SFGMap=dict();
-with open(SFGMapFile, 'r') as f:
-    reader = csv.reader(f,delimiter=",");
-    for sn,trueValue,ExpectedEC in reader:
-        SFGMap[sn]=[trueValue,ExpectedEC];
-
-FG00MapFile="FG00Map.csv";
-FG00Map=dict();
-with open(FG00MapFile, 'r') as f:
-    reader = csv.reader(f,delimiter=",");
-    for sn,trueValue,ExpectedEC in reader:
-        FG00Map[sn]=[trueValue,ExpectedEC];
-
-FG24MapFile="FG24Map.csv";
-FG24Map=dict();
-with open(FG24MapFile, 'r') as f:
-    reader = csv.reader(f,delimiter=",");
-    for sn,trueValue,ExpectedEC in reader:
-        FG24Map[sn]=[trueValue,ExpectedEC];
+if stationCategory=="3":
+    FCTMapFile="FCTMap.csv";
+    FCTPanelMap=dict();        
+    with open(FCTMapFile, 'r') as f:
+        reader = csv.reader(f,delimiter=",");
+        for sn,panel,trueValue,ExpectedEC in reader:
+            FCTPanelMap[sn]=[panel,trueValue,ExpectedEC];
+    
+    SFGMapFile="SFGMap.csv";
+    SFGMap=dict();
+    with open(SFGMapFile, 'r') as f:
+        reader = csv.reader(f,delimiter=",");
+        for sn,trueValue,ExpectedEC in reader:
+            SFGMap[sn]=[trueValue,ExpectedEC];
+    
+    FG00MapFile="FG00Map.csv";
+    FG00Map=dict();
+    with open(FG00MapFile, 'r') as f:
+        reader = csv.reader(f,delimiter=",");
+        for sn,trueValue,ExpectedEC in reader:
+            FG00Map[sn]=[trueValue,ExpectedEC];
+    
+    FG24MapFile="FG24Map.csv";
+    FG24Map=dict();
+    with open(FG24MapFile, 'r') as f:
+        reader = csv.reader(f,delimiter=",");
+        for sn,trueValue,ExpectedEC in reader:
+            FG24Map[sn]=[trueValue,ExpectedEC];
 
 UnitPool=defaultdict(list);
-SortedUnitPool=defaultdict(list);
 stationName="";
 
 if stationCategory=="1":    #ICT station
@@ -291,58 +298,60 @@ if UnitPool.__len__() ==0:
 testsBalanced=True;
 
 ### Check if the trial time is balanced.
+AllResults=[];
+SortedResults=[];
 for record in UnitPool:
     if len(UnitPool[record])!=RequestTestTime:
         sn,execid=record.split('$');
         print sn,"is tested in",execid,"unbalanced, only test",len(UnitPool[record]),"times";
         testsBalanced=False;
     else:
-        temp=sorted(UnitPool[record],key=lambda (k,v): v[1],reverse=False);
-        SortedUnitPool[record].append(temp);
+        for singleResult in UnitPool[record]:
+            oneresult=KeysInFile();
+            oneresult.SN, oneresult.ExecID=record.split('$');
+            oneresult.Result,oneresult.Time=singleResult[:];
+            AllResults.append(oneresult);
 if testsBalanced is False:
     sys.exit();
+SortedResults=sorted(AllResults,key=lambda (KeysInFile): KeysInFile.Time,reverse=False);
+
 
 summaryFile=os.path.join(SummaryFolder,stationName+"_TMV_summary_"+datetime.now().strftime("%Y%m%d%H%M%S")+".csv");
 summaryFileHandle=open(summaryFile,"w");
 summaryFileWriter=csv.writer(summaryFileHandle,lineterminator='\n');
-row=["Samples","Appraiser","True_Value","Test_Value","Trial"];
+row=["Samples","Appraiser","True_Value","Test_Value","TestTime"];
 summaryFileWriter.writerow(row);
 
 ### Check if the good sample quantity is same as bad sample.
 goodDeviceCount=0;
 badDeviceCount=0;
-for oneRecord in SortedUnitPool:
-    for resultsInOneRecord in SortedUnitPool[oneRecord]:
-        count=1;
-        for singleResult in resultsInOneRecord:
-#             print oneRecord, singleResult[0], count;
-            sn,execid=oneRecord.split('$');
-            try:
-                if stationName=="USBCharger":
-                    expectedResult=ChargerMap[sn];
-                if stationName=="ICT":
-                    panelID,expectedResult=ICTPanelMap[sn];
-                if stationName=="FCT":
-                    panelID,expectedResult,expectedEC=FCTPanelMap[sn];
-                if stationName=="SFG":
-                    expectedResult,expectedEC=SFGMap[sn];
-                if stationName=="FG00":
-                    expectedResult,expectedEC=FG00Map[sn];
-                if stationName == "FG24":
-                    expectedResult,expectedEC=FG24Map[sn];
-            except:
-                print "Something goes wrong in",sn,"mapping.";
-                sys.exit();
-            if stationName =="ICT" or stationName=="FCT":
-                row=[panelID,execid,expectedResult,singleResult[0],count];
-            else:
-                row=[sn,execid,expectedResult,singleResult[0],count];
-            summaryFileWriter.writerow(row);
-            count+=1;
-            if expectedResult=="BAD":
-                badDeviceCount+=1;
-            else:
-                goodDeviceCount+=1;
+for oneRecord in SortedResults:
+    sn=oneRecord.SN;
+    try:
+        if stationName=="USBCharger":
+            expectedResult=ChargerMap[sn];
+        if stationName=="ICT":
+            panelID,expectedResult=ICTPanelMap[sn];
+        if stationName=="FCT":
+            panelID,expectedResult,expectedEC=FCTPanelMap[sn];
+        if stationName=="SFG":
+            expectedResult,expectedEC=SFGMap[sn];
+        if stationName=="FG00":
+            expectedResult,expectedEC=FG00Map[sn];
+        if stationName == "FG24":
+            expectedResult,expectedEC=FG24Map[sn];
+    except:
+        print "Something goes wrong in",sn,"mapping.";
+        sys.exit();
+    if stationName =="ICT" or stationName=="FCT":
+        row=[panelID,sn,oneRecord.ExecID,expectedResult,oneRecord.Result,"'"+oneRecord.Time];
+    else:
+        row=[sn,oneRecord.ExecID,expectedResult,oneRecord.Result,"'"+oneRecord.Time];
+    summaryFileWriter.writerow(row);
+    if expectedResult=="BAD":
+        badDeviceCount+=1;
+    else:
+        goodDeviceCount+=1;
 summaryFileHandle.close();
 # print summaryFile,"is generated.";
 if badDeviceCount!=goodDeviceCount:
