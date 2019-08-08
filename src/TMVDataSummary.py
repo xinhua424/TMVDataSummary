@@ -12,13 +12,20 @@
 #Version 1.3
 #Check if the good sample quantity is same as the bad sample.
 
+#2019-08-08
+Version=1.4;
+#Only check the bad unit fails, and good unit passes.
+
 import os;
 import sys;
 from collections import defaultdict;
 import csv;
 from datetime import datetime;
 
+print "Script version", Version;
 RequestTestTime=3;
+
+VerifyErrorCode=False;
 
 SummaryFolder=r"C:\temp";
 if not os.path.exists(SummaryFolder):
@@ -212,50 +219,39 @@ if stationCategory=="3":    #FCT/SFG/FG00/FG24 station
                 if "_FCT_" in logfilename or "_MB_" in logfilename:
                     stationName="FCT";
                     keys=ParseLogFile(os.path.join(path,logfilename),stationName);
-                    if FCTPanelMap[keys.SN][1]=="BAD":     #Bad sample
-                        if FCTPanelMap[keys.SN][2] in keys.ECList:
-                            keys.Result="BAD";
-                        else:
-                            keys.Result="GOOD";
-                    else:   #Good sample
-                        if keys.Result=="PASS":
-                            keys.Result="GOOD";
-                        else:
-                            keys.Result="BAD";
-                else:
-                    if "_SFG_" in logfilename:
-                        stationName="SFG";
-                        keys=ParseLogFile(os.path.join(path,logfilename),stationName);
-                        if SFGMap[keys.SN][0]=="BAD":     #Expected bad sample
-                            if SFGMap[keys.SN][1] in keys.ECList:
+                    if VerifyErrorCode==True:
+                        if FCTPanelMap[keys.SN][1]=="BAD":     #Bad sample
+                            if FCTPanelMap[keys.SN][2] in keys.ECList:
                                 keys.Result="BAD";
                             else:
                                 keys.Result="GOOD";
-                        else:   #Expected good sample
+                        else:   #Good sample
                             if keys.Result=="PASS":
                                 keys.Result="GOOD";
                             else:
                                 keys.Result="BAD";
-                    else:
-                        if "_FG00_" in logfilename:
-                            stationName="FG00";
-                            keys=ParseLogFile(os.path.join(path,logfilename),stationName);
-                            if FG00Map[keys.SN][0]=="BAD":     #Bad sample
-                                if FG00Map[keys.SN][1] in keys.ECList:
+                else:
+                    if "_SFG_" in logfilename:
+                        stationName="SFG";
+                        keys=ParseLogFile(os.path.join(path,logfilename),stationName);
+                        if VerifyErrorCode==True:
+                            if SFGMap[keys.SN][0]=="BAD":     #Expected bad sample
+                                if SFGMap[keys.SN][1] in keys.ECList:
                                     keys.Result="BAD";
                                 else:
                                     keys.Result="GOOD";
-                            else:   #Good sample
+                            else:   #Expected good sample
                                 if keys.Result=="PASS":
                                     keys.Result="GOOD";
                                 else:
                                     keys.Result="BAD";
-                        else:
-                            if "_FG24_" in logfilename:
-                                stationName="FG24";
-                                keys=ParseLogFile(os.path.join(path,logfilename),stationName);
-                                if FG24Map[keys.SN][0]=="BAD":     #Bad sample
-                                    if FG24Map[keys.SN][1] in keys.ECList:
+                    else:
+                        if "_FG00_" in logfilename:
+                            stationName="FG00";
+                            keys=ParseLogFile(os.path.join(path,logfilename),stationName);
+                            if VerifyErrorCode==True:
+                                if FG00Map[keys.SN][0]=="BAD":     #Bad sample
+                                    if FG00Map[keys.SN][1] in keys.ECList:
                                         keys.Result="BAD";
                                     else:
                                         keys.Result="GOOD";
@@ -264,10 +260,29 @@ if stationCategory=="3":    #FCT/SFG/FG00/FG24 station
                                         keys.Result="GOOD";
                                     else:
                                         keys.Result="BAD";
+                        else:
+                            if "_FG24_" in logfilename:
+                                stationName="FG24";
+                                keys=ParseLogFile(os.path.join(path,logfilename),stationName);
+                                if VerifyErrorCode==True:
+                                    if FG24Map[keys.SN][0]=="BAD":     #Bad sample
+                                        if FG24Map[keys.SN][1] in keys.ECList:
+                                            keys.Result="BAD";
+                                        else:
+                                            keys.Result="GOOD";
+                                    else:   #Good sample
+                                        if keys.Result=="PASS":
+                                            keys.Result="GOOD";
+                                        else:
+                                            keys.Result="BAD";
                             else:
                                 print "Can't find keyword in log file name. It could be MB, SFG, FG00 or FG24.";
                                 quit();
-                
+                if VerifyErrorCode==False:
+                    if keys.Result=="FAIL":
+                        keys.Result="BAD";
+                    if keys.Result=="PASS":
+                        keys.Result="GOOD";
                 UnitPool[keys.SN+"$"+keys.ExecID].append([keys.Result,keys.Time]);
 if UnitPool.__len__() ==0:
     print "There is no .txt file found in path: "+RootFolder;
