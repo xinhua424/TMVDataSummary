@@ -344,7 +344,7 @@ for oneRecord in SortedResults:
         print "Something goes wrong in",sn,"mapping.";
         sys.exit();
     if stationName =="ICT" or stationName=="FCT":
-        row=[panelID,sn,oneRecord.ExecID,expectedResult,oneRecord.Result,"'"+oneRecord.Time];
+        row=[panelID,oneRecord.ExecID,expectedResult,oneRecord.Result,"'"+oneRecord.Time];
     else:
         row=[sn,oneRecord.ExecID,expectedResult,oneRecord.Result,"'"+oneRecord.Time];
     summaryFileWriter.writerow(row);
