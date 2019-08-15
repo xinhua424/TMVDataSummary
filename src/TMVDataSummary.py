@@ -17,9 +17,13 @@
 #Only check the bad unit fails, and good unit passes.
 
 #2019-08-08
-Version=1.5;
+# Version=1.5;
 #Sort the overall test result by test time.
 #Only read the map file for the specified station.
+
+#2019-08-13
+Version=1.6;
+#Change the summary file name as CM_TestStand_TesterID_TMVRawData_Summary;
 
 import os;
 import sys;
@@ -28,6 +32,8 @@ import csv;
 from datetime import datetime;
 
 print "Script version", Version;
+
+CMName="AFG";
 RequestTestTime=3;
 
 VerifyErrorCode=False;
@@ -314,9 +320,9 @@ for record in UnitPool:
 if testsBalanced is False:
     sys.exit();
 SortedResults=sorted(AllResults,key=lambda (KeysInFile): KeysInFile.Time,reverse=False);
+testerID=SortedResults[0].ExecID.split("_")[0];
 
-
-summaryFile=os.path.join(SummaryFolder,stationName+"_TMV_summary_"+datetime.now().strftime("%Y%m%d%H%M%S")+".csv");
+summaryFile=os.path.join(SummaryFolder,CMName+"_"+stationName+"_"+testerID+"_TMVRawData_summary_"+datetime.now().strftime("%Y%m%d%H%M%S")+".csv");
 summaryFileHandle=open(summaryFile,"w");
 summaryFileWriter=csv.writer(summaryFileHandle,lineterminator='\n');
 row=["Samples","Appraiser","True_Value","Test_Value","TestTime"];
